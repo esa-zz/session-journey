@@ -1,0 +1,4 @@
+interface:
+  display_name: "Session Journey"
+  short_description: "Preserve minimal append-only session memory"
+  default_prompt: "Use $session-journey to preserve memory-worthy discoveries, decisions, pivots, corrections, failures, blockers, and important unexecuted plans from this session."
