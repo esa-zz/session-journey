@@ -33,8 +33,10 @@ FIRST_SEQUENCE = 1
 UUID_PATTERN = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 KIND_PATTERN = r"[a-z][a-z0-9-]{0,31}"
 EVENT_ID_PATTERN = rf"J[0-9a-f]{{{EVENT_TAG_HEX_LENGTH}}}-[0-9]+"
+METADATA_SLUG_PATTERN = r"[a-z][a-z0-9-]{0,63}"
 
 KIND_RE = re.compile(KIND_PATTERN)
+METADATA_SLUG_RE = re.compile(METADATA_SLUG_PATTERN)
 EVENT_ID_RE = re.compile(rf"J([0-9a-f]{{{EVENT_TAG_HEX_LENGTH}}})-([0-9]+)")
 
 # A well-formed event heading line, e.g. "## Jf98641ad65550efc32bc-0003 · pivot".
@@ -42,6 +44,10 @@ EVENT_HEADING_RE = re.compile(rf"## ({EVENT_ID_PATTERN}) · {KIND_PATTERN}\s*")
 # Anything in our reserved event-ID namespace. Rejected inside bodies,
 # and must be well formed when it appears in a journey file.
 EVENT_HEADING_LIKE_RE = re.compile(rf"^## J[0-9A-Fa-f]{{{EVENT_TAG_HEX_LENGTH}}}-", re.MULTILINE)
+SESSION_METADATA_RE = re.compile(
+    rf"Tool: `({METADATA_SLUG_PATTERN})`\n"
+    rf"Agent: `({METADATA_SLUG_PATTERN})`\n"
+)
 
 # Last five path parts: sessions/<YYYY>/<MM>/<DD>/<HHMMSS>Z_<uuid>.md
 CANONICAL_PATH_TAIL_RE = re.compile(
@@ -178,12 +184,16 @@ def session_start_lock(memory_root: Path) -> Iterator[None]:
 # --- Journey content -------------------------------------------------------
 
 
-def session_header(session_id: str, started_at: str) -> str:
+def session_header(session_id: str, started_at: str, tool: str | None = None, agent_name: str | None = None) -> str:
+    if (tool is None) != (agent_name is None):
+        raise ValueError("tool and agent name must be provided together")
     fingerprint = session_fingerprint(session_id, started_at)
+    metadata = "" if tool is None else f"Tool: `{tool}`\nAgent: `{agent_name}`\n"
     return (
         "# Session journey\n\n"
         f"Session: `{session_id}`\n"
         f"Started: `{started_at}`\n"
+        f"{metadata}"
         f"Session-Fingerprint: `sha256:{fingerprint}`\n\n"
         "This file is append-only. Correct or supersede earlier entries with a new event.\n"
     )
@@ -223,7 +233,26 @@ def event_ids_in(content: str) -> list[str]:
 def validate_journey(content: str, path: Path) -> tuple[str, list[str]]:
     """Check header and event IDs against the path. Return (event tag, event IDs)."""
     session_id, started_at = identity_from_path(path)
-    if not content.startswith(session_header(session_id, started_at)):
+    identity_prefix = (
+        "# Session journey\n\n"
+        f"Session: `{session_id}`\n"
+        f"Started: `{started_at}`\n"
+    )
+    if not content.startswith(identity_prefix):
+        raise ValueError(f"journey header does not match its canonical path (Session, Started, or Session-Fingerprint): {path}")
+
+    remainder = content[len(identity_prefix):]
+    if remainder.startswith("Tool: "):
+        metadata_match = SESSION_METADATA_RE.match(remainder)
+        if metadata_match is None:
+            raise ValueError(f"journey metadata is malformed: {path}")
+        remainder = remainder[metadata_match.end():]
+
+    expected_tail = (
+        f"Session-Fingerprint: `sha256:{session_fingerprint(session_id, started_at)}`\n\n"
+        "This file is append-only. Correct or supersede earlier entries with a new event.\n"
+    )
+    if not remainder.startswith(expected_tail):
         raise ValueError(f"journey header does not match its canonical path (Session, Started, or Session-Fingerprint): {path}")
 
     tag = event_tag(session_fingerprint(session_id, started_at))
@@ -264,6 +293,11 @@ def check_kind(kind: str) -> None:
         raise ValueError("--kind must be a lowercase slug such as discovery, decision, or pivot")
 
 
+def check_metadata_slug(value: str, option: str) -> None:
+    if not METADATA_SLUG_RE.fullmatch(value):
+        raise ValueError(f"{option} must be a lowercase slug such as codex, claude-code, or default")
+
+
 def check_external_ref(ref: str) -> None:
     single_clean_line = ref and ref == ref.strip() and not CONTROL_CHAR_RE.search(ref)
     if not single_clean_line:
@@ -279,6 +313,15 @@ def unique(values: list[str] | None) -> list[str]:
 
 def cmd_start(args: argparse.Namespace) -> int:
     session_id = canonical_uuid(args.session_id) if args.session_id else str(uuid.uuid4())
+    tool = args.tool
+    agent_name = args.agent_name
+    if tool is None and agent_name is not None:
+        raise ValueError("--agent-name requires --tool")
+    if tool is not None:
+        check_metadata_slug(tool, "--tool")
+        if agent_name is None:
+            agent_name = "default"
+        check_metadata_slug(agent_name, "--agent-name")
     project_root = Path(args.project_root).expanduser().resolve()
     memory_root = project_root / Path(args.memory_dir).expanduser()  # absolute memory_dir wins
     sessions_root = memory_root / "sessions"
@@ -292,7 +335,7 @@ def cmd_start(args: argparse.Namespace) -> int:
         journey_path = journey_path_for(sessions_root, session_id, started)
         journey_path.parent.mkdir(parents=True, exist_ok=True)
         with journey_path.open("x", encoding="utf-8", newline="\n") as handle:
-            handle.write(session_header(session_id, format_utc(started)))
+            handle.write(session_header(session_id, format_utc(started), tool, agent_name))
             handle.flush()
             os.fsync(handle.fileno())
 
@@ -351,6 +394,8 @@ def build_parser() -> argparse.ArgumentParser:
     start.add_argument("--project-root", default=".", help="project root; defaults to current directory")
     start.add_argument("--memory-dir", default=".memory", help="memory directory relative to project root; defaults to .memory")
     start.add_argument("--session-id", help="stable session UUID from the host; generates UUIDv4 when omitted")
+    start.add_argument("--tool", help="coding tool slug, for example codex or claude-code")
+    start.add_argument("--agent-name", help="configured agent slug; defaults to default when --tool is provided")
     start.set_defaults(func=cmd_start)
 
     add = subparsers.add_parser("add", help="append one event; existing bytes are never rewritten")

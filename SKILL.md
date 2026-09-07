@@ -25,7 +25,7 @@ Example:
 
 The date and time come from the same UTC instant written as `Started:` in the file. The UUID is the session identity; the pathname is storage organization only. Do not rename a journey file after creation. The helper rejects journey files that do not use this canonical path shape.
 
-Each journey header also stores a deterministic full SHA-256 session fingerprint derived from the canonical session UUID and canonical `Started:` timestamp. The helper owns this value; agents should not calculate or edit it manually. The v1 fingerprint input is the ASCII byte sequence `session-journey:v1\0<uuid>\0<started>`.
+Each journey header also stores a deterministic full SHA-256 session fingerprint derived from the canonical session UUID and canonical `Started:` timestamp. The helper owns this value; agents should not calculate or edit it manually. The v1 fingerprint input is the ASCII byte sequence `session-journey:v1\0<uuid>\0<started>`. When known, the header may also record coding tool and configured agent name as lowercase slugs, for example `Tool: codex` and `Agent: default`. These fields do not affect the fingerprint or event IDs.
 
 Event IDs are session-qualified and sequential:
 
@@ -39,15 +39,17 @@ The helper may create `.memory/.session-journey-start.lock` to serialize concurr
 
 Create it lazily. A trivial session needs no journey. Start one when the first memory-worthy event occurs or when the work is likely to cross a context boundary.
 
-Use the helper in `scripts/journey.py`. Do not edit, delete, reorder, or manually renumber an existing journey entry. Do not edit `Session`, `Started`, or `Session-Fingerprint`. Event IDs remain stable only while the file stays append-only.
+Use the helper in `scripts/journey.py`. Do not edit, delete, reorder, or manually renumber an existing journey entry. Do not edit `Session`, `Started`, `Tool`, `Agent`, or `Session-Fingerprint`. Event IDs remain stable only while the file stays append-only.
 
 If the host exposes a stable UUID for the current session, pass it to `start`. Otherwise let the helper generate one.
 
 The helper requires Python >= 3.10 and has no shell dependency. Use a Python 3.10+ launcher available on the host: commonly `python3` on macOS/Linux, and `py -3` or `python` on Windows. In commands below, `<python>` means that launcher. Do not assume Bash, PowerShell, or any other specific shell.
 
 ```text
-<python> <skill-root>/scripts/journey.py start --project-root .
+<python> <skill-root>/scripts/journey.py start --project-root . --tool <tool-slug> [--agent-name <agent-slug>]
 ```
+
+Pass the current coding tool when known, such as `codex`, `claude-code`, `cline`, or `antigravity`. Tool-only start records agent `default`; pass `--agent-name` when the configured agent has another name. If tool identity is unavailable, omit both metadata options.
 
 Keep the returned path for this session. Do not guess that the newest journey belongs to you. Concurrent sessions may exist.
 

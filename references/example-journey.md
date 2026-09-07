@@ -2,6 +2,8 @@
 
 Session: `7ba3b25d-1055-49ef-91b6-4ed8cb73a20b`
 Started: `2026-09-06T18:10:00Z`
+Tool: `codex`
+Agent: `default`
 Session-Fingerprint: `sha256:f98641ad65550efc32bc1a90f734ec5154b9d90413e1465cfa116638dd43acea`
 
 This file is append-only. Correct or supersede earlier entries with a new event.
