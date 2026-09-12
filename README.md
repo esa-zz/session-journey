@@ -1,5 +1,27 @@
 # Session Journey
 
+## Install
+
+Install globally for Codex:
+
+```bash
+npx skills@latest add esa-zz/session-journey --skill=session-journey --agent=codex --global --yes
+```
+
+Or choose scope and supported agents interactively:
+
+```bash
+npx skills@latest add esa-zz/session-journey
+```
+
+Restart the agent if the skill does not appear immediately. Invoke it explicitly as `$session-journey`, or let the agent activate it when a session needs durable episodic memory.
+
+## Update
+
+```bash
+npx skills@latest update session-journey --global
+```
+
 Minimal append-only episodic memory for coding-agent sessions.
 
 Session Journey records the parts of a coding session that would be expensive to rediscover later. It keeps discoveries, decisions, failed approaches, pivots, corrections, blockers, important unexecuted plans, and unresolved questions.
@@ -109,34 +131,12 @@ Session Journey is a good fit when you want a small repository-local record of s
 
 It is a poor fit if you need a complete activity log, centralized cross-project memory, automatic semantic recall, live task coordination, or a database that continuously rewrites and ranks memories. Use systems designed for those jobs instead.
 
-## Install
-
-Install globally for Codex:
-
-```bash
-npx skills@latest add esa-zz/session-journey --skill=session-journey --agent=codex --global --yes
-```
-
-Or choose scope and supported agents interactively:
-
-```bash
-npx skills@latest add esa-zz/session-journey
-```
-
-Restart the agent if the skill does not appear immediately. Invoke it explicitly as `$session-journey`, or let the agent activate it when a session needs durable episodic memory.
-
 ## Requirements
 
 - Python 3.10 or newer
 - No Python packages or shell-specific runtime dependencies
 
 Journey files are written inside the active project under `.memory/sessions/`. The helper owns their IDs, timestamps, append operations, locking, and structural validation.
-
-## Update
-
-```bash
-npx skills@latest update session-journey --global
-```
 
 ## Development
 
