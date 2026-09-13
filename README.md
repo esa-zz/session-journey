@@ -2,7 +2,9 @@
 
 ![Session Journey: an agent navigating false starts, pivots, and discoveries](img/README.png)
 
-Minimal append-only episodic memory for coding-agent sessions.
+Minimal, harness-agnostic, append-only episodic memory for coding-agent sessions.
+
+Any agent that can load a skill and make a tool call to run a Python command can use it. No SDK, daemon, database, or model-specific integration required.
 
 ## Why this exists
 
