@@ -1,5 +1,7 @@
 # Session Journey
 
+![Session Journey: an agent navigating false starts, pivots, and discoveries](img/README.png)
+
 Minimal append-only episodic memory for coding-agent sessions.
 
 ## Why this exists
