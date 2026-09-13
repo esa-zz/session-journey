@@ -12,6 +12,18 @@ I built Session Journey for one failure mode that kept bothering me: an agent ca
 
 A session is also not a task. One session can touch several tasks, abandon an approach, discover a new constraint, switch direction, and later correct an earlier assumption. That messy sequence is the useful part.
 
+## Why should I use this?
+
+Ask yourself:
+
+- Do you want useful context from a session to disappear forever? No.
+- Do you like how lossy session compaction can be? No.
+- Do you want to reread full transcripts yourself, or spend tokens asking another agent to do it? No.
+- Do you want to preserve what mattered without keeping all the noise or adopting a large memory framework? Yes.
+- Do you want the memory format to stay independent of a specific agent harness and its optimizations? Yes.
+
+If your answers look exactly like that, maybe this skill helps you.
+
 ## How it works
 
 Each session gets one file:
